@@ -1,0 +1,32 @@
+---
+title: "project 3"
+author: "group work"
+date: "2024-03-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library (tidyverse)
+library(openintro)
+library (RMySQL)
+library(DBI)
+```
+
+```{r}
+mysqldb = dbConnect(RMySQL::MySQL(),
+                            dbname= 'atta.boatengsr67',
+                            host= 'cunydata607sql.mysql.database.azure.com',
+                            port=3306,
+                            user='atta.boatengsr67',
+                            password='atta.boatengsr67')
+
+dbListTables(mysqldb)
+```
+
+```{r}
+result = dbSendQuery(mysqldb, "select * from nyc_restaurants")
+
+nyc_restaurants <- fetch(result)
+
+print(nyc_restaurants)
+```
