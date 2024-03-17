@@ -1,0 +1,182 @@
+---
+title: "Project 3"
+author: "Andrianina David Raharijao"
+date: "2024-03-14"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(leaflet)
+library(sf)
+```
+
+## Overview of the Dataset
+
+This document aims to load and analyze a dataset concerning restaurant violations in New York City. The dataset is publicly available and can be accessed <https://dev.socrata.com/foundry/data.cityofnewyork.us/43nn-pn8j>.
+
+## Loading the Dataset
+
+The first step involves loading the CSV data into the R environment. Subsequently, critical violations are filtered out, and only specific columns are retained. Furthermore, the date column is converted into actual date values. Lastly, the analysis focuses solely on data from the year 2023.
+
+
+```{}
+
+
+
+
+
+```{r load}
+df_og <- read.csv("C:\\Users\\david\\Documents\\SPRING2024_DATA607\\Week8\\DOHMH_New_York_City_Restaurant_Inspection_Results.csv")
+df_og_all_year <- df_og %>%
+  filter(CRITICAL.FLAG == "Critical" ) %>%
+  select(CAMIS,
+         BORO,
+         ZIPCODE,
+         CUISINE.DESCRIPTION,
+         INSPECTION.DATE,
+         ACTION,
+         VIOLATION.DESCRIPTION,
+         VIOLATION.CODE,
+         INSPECTION.TYPE) %>%
+  mutate(INSPECTION.DATE = as.Date(INSPECTION.DATE, format = "%m/%d/%Y"))
+
+df <- df_og_all_year  %>%
+  filter(year(INSPECTION.DATE) == 2023)
+```
+
+
+## Analysis Question 1: Which borough has the most violations?
+
+Initially, the original dataframe was grouped by borough, utilizing a ratio calculated as the total number of violations divided by the number of unique restaurants. Based on the results depicted in the bar graph below, it appears that Queens exhibited the highest violation-to-restaurant ratio, followed by Brooklyn. However, for further analysis, our attention will be directed solely towards Queens.
+
+```{r q1_borough}
+#Make the dataframe of borough and their ratio
+df_bo <- df %>%
+  group_by(BORO) %>%
+  summarize(vio_ratio = n() / n_distinct(CAMIS)) %>%
+  arrange(desc(vio_ratio))
+
+#Bar graph showing the table
+ggplot(df_bo, aes(x = reorder(BORO, vio_ratio), y = vio_ratio)) +
+  geom_bar(stat = "identity", fill = "skyblue", color = "black") +
+  geom_text(aes(label = round(vio_ratio, 2)), vjust = -0.3) +
+  labs(x = "Borough", y = "Ratio", title = "Violation Ratio by Borough") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+Subsequently, within Queens, the violation dataframe was further grouped by zip code. This analysis revealed the top three zip codes with the highest violation ratios. The foremost was zip code 11005, exhibiting a violation ratio of 6.5. 
+
+```{r q1_zip}
+#Make the dataframe of Queen zipcode and their violation ratio
+df_zip <- df %>%
+  filter(BORO == "Queens") %>%
+  group_by(ZIPCODE) %>%
+  summarize(vio_ratio = n() / n_distinct(CAMIS)) %>%
+  arrange(desc(vio_ratio)) %>%
+  filter(ZIPCODE != "")
+
+print(head(df_zip,3))
+```
+
+Additionally, we sought to visualize the distribution of violations by zip code on a map to identify any discernible trends in specific regions. This visualization will provide insight into geographic patterns of violations within Queens.
+
+```{r q1_zip_map}
+#Load shapefile
+geojson_path <- "C:\\Users\\david\\Documents\\SPRING2024_DATA607\\Week8\\queen.geojson"
+queens_geojson <- st_read(geojson_path)
+
+# Merge your df_zip with shapefile
+queens_data <- merge(queens_geojson, df_zip, by = "ZIPCODE")
+
+# Create the heatmap
+ggplot(data = queens_data) +
+  geom_sf(aes(fill = vio_ratio)) +
+  scale_fill_gradient(low = "white", high = "red") +
+  theme_minimal() +
+  labs(fill = "Violation Ratio by Zip")
+```
+
+## Analysis Question 2: Overall, what is the most common violation in Queens for 2023?
+
+An analysis was conducted to determine the most common violations occurring in Queens during the year 2023. This was achieved by grouping the dataframe based on the violation code and sorting them by the count of rows. The top five violations were identified, collectively constituting 42% of all violations among the 57 possible violation types:
+
+* **06C:** Food, supplies, or equipment not protected from potential source of contamination during storage, preparation, transportation, display, service or from customer’s refillable, reusable container. Condiments not in single-service containers or dispensed directly by the vendor.
+			
+* **04L:** Evidence of mice or live mice in establishment's food or non-food areas.
+				
+* **02G:** Cold TCS food item held above 41 °F; smoked or processed fish held above 38 °F; intact raw eggs held above 45 °F; or reduced oxygen packaged (ROP) TCS foods held above required temperatures except during active necessary preparation.
+			
+* **06D:** Food contact surface not properly washed, rinsed and sanitized after each use and following any activity when contamination may have occurred.
+			
+* **02B:** Hot TCS food item not held at or above 140 °F.
+
+
+```{r q2_common}
+df_queen_v <-  df %>%
+  filter(BORO == "Queens")
+
+
+#Top 4 violations (they represent 42% of all violations)
+df_queen_v %>%
+  group_by(VIOLATION.CODE) %>%
+  summarise(numb_assigned = n()) %>%
+  arrange(desc(numb_assigned)) %>%
+  filter(numb_assigned > 1000)
+```
+
+To understand the trends of the top four violations over time in Queens, an analysis was conducted to observe changes in the assigned violation numbers across different years. The graph below illustrates the distribution of these violations over time. It appears that collectively, these five violations consistently represent a significant portion of all violations reported, starting from the year 2021.
+
+```{r q2_main}
+#violations by year
+df_q <- df_og_all_year %>%
+  filter(BORO == "Queens") %>%
+  mutate(year_q = year(INSPECTION.DATE)) %>%
+  filter(year_q > 2019 & year_q < 2024)
+  
+
+df_q1 <- df_q %>%
+  filter(VIOLATION.CODE == "06C" |
+           VIOLATION.CODE == "04L" |
+           VIOLATION.CODE == "02G" |
+           VIOLATION.CODE == "06D" |
+           VIOLATION.CODE == "02B") %>%
+  group_by(year_q, VIOLATION.CODE) %>%
+  summarise(count = n())
+
+#Total violations by year
+df_q2 <- df_q %>%
+  group_by(year_q)%>%
+  summarise(count2 = n())
+
+
+```
+
+An interesting trend observed among the top five violations is the increase in violation code 06C over the years. In 2020, it ranked as one of the lowest among the top five violations. However, in 2023, it has emerged as the highest.
+
+```{r plot_q2}
+
+# Plotting
+ggplot() +
+  geom_bar(data = df_q1, aes(x = year_q, y = count, fill = VIOLATION.CODE), stat = "identity", position = "dodge") +
+  theme_minimal()
+
+```
+Despite fluctuations in the total number of violations given each year, the collective proportion of these top violations remains similar.
+
+```{r plot_q2_alt}
+
+# Plotting
+ggplot() +
+  geom_bar(data = df_q1, aes(x = year_q, y = count, fill = VIOLATION.CODE), stat = "identity", position = "stack") +
+  geom_line(data = df_q2, aes(x = year_q, y = count2, group = 1), color = "blue") +
+  theme_minimal()
+
+```
+
+
