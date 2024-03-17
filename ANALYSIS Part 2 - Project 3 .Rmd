@@ -1,0 +1,88 @@
+---
+title: "project 3 - group work analysis"
+author: "group work - BLESSA"
+date: "March 15, 2024"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+mydata <- read.csv(file = '/Users/blessinga/Desktop/nycrest.csv')
+
+head(mydata)
+
+mydata2 <- mydata %>%
+  select(BORO,ZIPCODE, CUISINE.DESCRIPTION, INSPECTION.DATE, CRITICAL.FLAG,Council.District)
+
+mydata2$Year <- format(as.Date(mydata2$INSPECTION.DATE, format="%d/%m/%y"),"%Y")
+
+head(mydata2)
+
+mydata3 <- mydata2 %>%
+  select(BORO,ZIPCODE,Year, CUISINE.DESCRIPTION , CRITICAL.FLAG,Council.District)
+  
+head(mydata3)
+
+mydata3 <- na.omit(mydata3)
+
+```
+
+```{r}
+Critdata <- dplyr::filter(mydata3, CRITICAL.FLAG=="Critical")
+
+view(Critdata)
+```
+
+```{r}
+counts <- table(Critdata$BORO)
+barplot(counts, main="Number of Critical Violations by Borough",
+   xlab="Boroughs")
+
+```
+
+
+
+
+## Question 2:
+ 
+What Cuisine had the most violations?
+
+<b> American Cuisine have the most violations compared to all other cuisines. \
+Ethnically American, Chinese, and Latin American cuisine have the most violations. </b>
+
+```{r}
+crits_by_cuisine <- Critdata %>%
+  group_by(CUISINE.DESCRIPTION) %>%
+  summarize(total = n()) %>%
+  # Sort by total
+  arrange(desc(total)) %>%
+  # Make the category column ordered
+  mutate(CUISINE.DESCRIPTION = fct_inorder(CUISINE.DESCRIPTION))
+```
+
+```{r plot-wider, fig.width=8, fig.height=10}
+ggplot(crits_by_cuisine,
+       aes(y = fct_rev(CUISINE.DESCRIPTION), x = total)) +
+  geom_col() +
+  scale_x_continuous() +
+  labs(y = NULL, x = "Total # Of Violations")
+```
+
+## Question 4
+4. Which year had the most and least violations? \
+\
+    <b> The year 2016 had the least violation. \
+    The year 2022 had the most violation.
+    </b>
+```{r}
+
+ggplot(Critdata, aes(x = Year, fill = Year)) +
+  geom_bar(width = 1 ,position = position_dodge(0.7)) + labs(title = "Number of Violations Per Year (in quadrillions)")
+
+```
