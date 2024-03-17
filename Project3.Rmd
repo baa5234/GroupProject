@@ -25,12 +25,6 @@ This document aims to load and analyze a dataset concerning restaurant violation
 The first step involves loading the CSV data into the R environment. Subsequently, critical violations are filtered out, and only specific columns are retained. Furthermore, the date column is converted into actual date values. Lastly, the analysis focuses solely on data from the year 2023.
 
 
-```{}
-
-
-
-
-
 ```{r load}
 df_og <- read.csv("C:\\Users\\david\\Documents\\SPRING2024_DATA607\\Week8\\DOHMH_New_York_City_Restaurant_Inspection_Results.csv")
 df_og_all_year <- df_og %>%
