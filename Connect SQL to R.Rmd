@@ -5,28 +5,67 @@ date: "2024-03-17"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-library (tidyverse)
-library(openintro)
-library (RMySQL)
+```{r echo=FALSE, results='asis'}
+library("RMySQL")
 library(DBI)
+library(dbplyr)
+library(tidyverse)
+
+conn <- dbConnect(MySQL(), user = 'atta.boatengsr67', password = 'atta.boatengsr67', dbname='atta.boatengsr67', host = 'cunydata607sql.mysql.database.azure.com');
+
 ```
 
-```{r}
-mysqldb = dbConnect(RMySQL::MySQL(),
-                            dbname= 'atta.boatengsr67',
-                            host= 'cunydata607sql.mysql.database.azure.com',
-                            port=3306,
-                            user='atta.boatengsr67',
-                            password='atta.boatengsr67')
+```{r echo=TRUE, results='asis'}
 
-dbListTables(mysqldb)
-```
+library("RMySQL")
+library(DBI)
+library(dbplyr)
+library(tidyverse)
+library(knitr)
 
-```{r}
-result = dbSendQuery(mysqldb, "select * from nyc_restaurants")
 
-nyc_restaurants <- fetch(result)
 
-print(nyc_restaurants)
+res <- GET("https://data.cityofnewyork.us/resource/43nn-pn8j.json");
+data <- fromJSON(rawToChar(res$content));
+data <- data.table::rbindlist(data, fill = TRUE);
+data <- data.frame(data);
+
+restaurants <- data.frame(borough = as.character(data$boro),
+                          zip_code = as.integer(data$zipcode),
+                          cuisine_description = as.character(data$cuisine_description),
+                          violation_code = as.character(data$violation_code),
+                          violation_description = as.character(data$violation_description),
+                          action = as.character(data$action),
+                          grade = as.character(data$grade),
+                          grade_date = data$grade_date,
+                          inspection_type = as.character(data$inspection_type),
+                          inspection_date = data$inspection_date);
+
+
+
+restaurants <- restaurants %>%filter(!is.na(borough));
+restaurants <- restaurants %>%filter(!is.na(zip_code));
+restaurants <- restaurants %>%filter(!is.na(cuisine_description));
+restaurants <- restaurants %>%filter(!is.na(violation_code));
+restaurants <- restaurants %>%filter(!is.na(violation_description));
+restaurants <- restaurants %>%filter(!is.na(action));
+restaurants <- restaurants %>%filter(!is.na(grade));
+restaurants <- restaurants %>%filter(!is.na(inspection_type));
+restaurants <- restaurants %>%filter(!is.na(inspection_date));
+
+
+query <- "DROP TABLE NYC_RESTAURANTS;";
+dbGetQuery(conn, query);
+
+dbWriteTable(conn, "NYC_RESTAURANTS", restaurants);
+
+query <- "select * from NYC_RESTAURANTS;";
+dd <- dbGetQuery(conn, query);
+
+dd <- data.frame(dd);
+
+kable(dd)
+
+
+
 ```
