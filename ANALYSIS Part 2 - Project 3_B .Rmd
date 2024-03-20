@@ -1,0 +1,102 @@
+---
+title: "Project 3 - NYC Restaurant Violation Analysis - Group project"
+author: "Blessing A. & Group"
+date: "March 15, 2024"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+```{r}
+mydata <- read.csv(url("https://raw.githubusercontent.com/baa5234/GroupProject/main/nycrest.csv"))
+
+head(mydata)
+
+
+mydata2 <- mydata %>%
+  select(BORO,ZIPCODE, CUISINE.DESCRIPTION, INSPECTION.DATE, CRITICAL.FLAG,Council.District)
+
+mydata2$Year <- format(as.Date(mydata2$INSPECTION.DATE, format="%d/%m/%y"),"%Y")
+
+head(mydata2)
+
+mydata3 <- mydata2 %>%
+  select(BORO,ZIPCODE, Year, CUISINE.DESCRIPTION , CRITICAL.FLAG,Council.District)
+  
+head(mydata3)
+
+mydata3 <- na.omit(mydata3)
+
+head(mydata3)
+
+```
+
+```{r}
+Critdata <- dplyr::filter(mydata3, CRITICAL.FLAG=="Critical")
+
+view(Critdata)
+```
+
+## Question 3:
+
+What borough had the most number of critical violations?
+
+<b>Based on the graph Manhattan had the most number of critical violations amongst the 5 boroughs. This is a general population compared to the ratio population of the 5 borough between the years of 2016 and 2023. </b>
+
+```{r}
+counts <- table(Critdata$BORO)
+barplot(counts, main="Number of Critical Violations by Borough",
+   xlab="Boroughs")
+
+```
+
+
+
+## Question 4:
+ 
+What 3 Cuisines had the most critical violations?
+
+<b> American Cuisines had the most violations compared to all other cuisines in NYC. \
+This graph is in order so I excluded the cuisines that were not ethnic in the answer. Therefore Ethnically American, Chinese, and Latin American cuisine have the most critical violations within NYC. </b>
+
+```{r}
+crits_by_cuisine <- Critdata %>%
+  group_by(CUISINE.DESCRIPTION) %>%
+  summarize(total = n()) %>%
+  # Sort by total
+  arrange(desc(total)) %>%
+  # Make the category column ordered
+  mutate(CUISINE.DESCRIPTION = fct_inorder(CUISINE.DESCRIPTION))
+```
+
+```{r plot-wider, fig.width=8, fig.height=10}
+ggplot(crits_by_cuisine,
+       aes(y = fct_rev(CUISINE.DESCRIPTION), x = total)) +
+  geom_col() +
+  scale_x_continuous() +
+  labs(y = NULL, x = "Total # Of Violations")
+```
+
+<b> If You want to know the exact number of critical violations. You will see American cuisines had a total of 7,438 critical violations. Chinese cuisines had a total of 4,954 critical violations and Latin American cuisines had a total of 1,807 critical violations between the years of 2016 and 2023. </b>
+```{r}
+head (crits_by_cuisine)
+```
+## Question 5:
+
+5. Which year had the most and least critical violations? \
+\
+    <b> The year 2016 had the least critical violations. \
+    The year 2022 had the most critical violations.
+    </b>
+```{r}
+
+ggplot (Critdata, aes(x = Year, fill = Year)) +
+  geom_bar(width = 1 ,position = position_dodge(0.7)) + labs(title = "Number of Violations Per Year (in quadrillions)")
+
+```
